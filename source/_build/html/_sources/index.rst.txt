@@ -10,5 +10,7 @@ Welcome to AWS Guide's documentation!
    :maxdepth: 1
    :caption: CloudFormation 模板
 
-   创建一个基础三层架构 <CloudFormation/basic-web>   
+   创建一个基础三层架构 <cloudformation/basic-web>   
+
+
 
