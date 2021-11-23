@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="zh-CN" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>创建一个基础三层架构 &mdash; AWS Guide 0.0.1 文档</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/translations.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="索引" href="../genindex.html" />
+    <link rel="search" title="搜索" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> AWS Guide
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="在文档中搜索" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">创建一个基础三层架构</a><ul>
+<li><a class="reference internal" href="#key-pair">生成 Key Pair</a></li>
+<li><a class="reference internal" href="#id3">部署模板</a><ul>
+<li><a class="reference internal" href="#id4">选择模板文件</a></li>
+<li><a class="reference internal" href="#stack">指定 Stack 名称</a></li>
+<li><a class="reference internal" href="#id5">创建 Stack</a></li>
+<li><a class="reference internal" href="#windows">连接到 Windows 实例</a></li>
+<li><a class="reference internal" href="#id6">测试</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">AWS Guide</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>创建一个基础三层架构</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/cloudformation/basic-web.rst.txt" rel="nofollow"> 查看页面源码</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="basic-web">
+<span id="id1"></span><h1><a class="toc-backref" href="#id7">创建一个基础三层架构</a><a class="headerlink" href="#basic-web" title="永久链接至标题"></a></h1>
+<div class="contents topic" id="id2">
+<p class="topic-title">目录</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#basic-web" id="id7">创建一个基础三层架构</a></p>
+<ul>
+<li><p><a class="reference internal" href="#key-pair" id="id8">生成 Key Pair</a></p></li>
+<li><p><a class="reference internal" href="#id3" id="id9">部署模板</a></p>
+<ul>
+<li><p><a class="reference internal" href="#id4" id="id10">选择模板文件</a></p></li>
+<li><p><a class="reference internal" href="#stack" id="id11">指定 Stack 名称</a></p></li>
+<li><p><a class="reference internal" href="#id5" id="id12">创建 Stack</a></p></li>
+<li><p><a class="reference internal" href="#windows" id="id13">连接到 Windows 实例</a></p></li>
+<li><p><a class="reference internal" href="#id6" id="id14">测试</a></p></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<section id="key-pair">
+<h2><a class="toc-backref" href="#id8">生成 Key Pair</a><a class="headerlink" href="#key-pair" title="永久链接至标题"></a></h2>
+<p>先按照文档指导， <a class="reference external" href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#having-ec2-create-your-key-pair">生成或导入 EC2 密钥对</a>。</p>
+</section>
+<section id="id3">
+<h2><a class="toc-backref" href="#id9">部署模板</a><a class="headerlink" href="#id3" title="永久链接至标题"></a></h2>
+<p>从 <a class="reference external" href="https://www.kiking.team/cdk-web.template.json">这个位置</a> 下载 CloudFormation 模板。
+打开 <a class="reference external" href="https://cn-northwest-1.console.amazonaws.cn/cloudformation">宁夏区域 CloudFormation 控制台</a>， 创建一个 Stack。</p>
+<section id="id4">
+<h3><a class="toc-backref" href="#id10">选择模板文件</a><a class="headerlink" href="#id4" title="永久链接至标题"></a></h3>
+<p>选择 <strong>Upload a template file</strong>，选择刚下载的模板文件。</p>
+</section>
+<section id="stack">
+<h3><a class="toc-backref" href="#id11">指定 Stack 名称</a><a class="headerlink" href="#stack" title="永久链接至标题"></a></h3>
+<p>给 Stack 指点一个方便记忆的名称。
+在 KeyPair 下拉列表中，选择刚创建密钥对。
+其它不变。
+连续点击下一步。</p>
+</section>
+<section id="id5">
+<h3><a class="toc-backref" href="#id12">创建 Stack</a><a class="headerlink" href="#id5" title="永久链接至标题"></a></h3>
+<p>在 <strong>Review</strong> 页面，勾选 <code class="docutils literal notranslate"><span class="pre">I</span> <span class="pre">acknowledge</span> <span class="pre">that</span> <span class="pre">Amazon</span> <span class="pre">CloudFormation</span> <span class="pre">might</span> <span class="pre">create</span> <span class="pre">IAM</span> <span class="pre">resources.</span></code> 点击 <strong>Create Stack</strong></p>
+<p>模板会创造以下资源
+- 一个带有3个公有子网、3个私有子网和3个隔离子网的 VPC，CIDR 为 172.31.0.0/16
+- 在3个公有子网分别创建一个 NAT Gateway
+- 一台安装 Windows 2019 的 EC2 实例
+- 一台安装 Amazon Linux 2 的 Linux 实例作为跳板机
+- 一个应用负载均衡器，侦听 80 端口，转发请求到 Windows 实例
+- 一个 Aurora 集群，包括一个主实例和一个只读实例</p>
+</section>
+<section id="windows">
+<h3><a class="toc-backref" href="#id13">连接到 Windows 实例</a><a class="headerlink" href="#windows" title="永久链接至标题"></a></h3>
+<p>Windows 下以 PuTTY 为例，添加一个到 Linux 实例的 Session，包括地址、用户名、私钥，然后在 <code class="docutils literal notranslate"><span class="pre">Connection/SSH/Tunnels</span></code> 中添加一个 Tunnel：</p>
+<ul class="simple">
+<li><p>Source port: 50001</p></li>
+<li><p>Destination: Windows实例内网地址:3389</p></li>
+</ul>
+<p>启动这个 Session。</p>
+<p>Linux 和 Mac 下可以执行</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh -N -L <span class="m">50001</span>:Windows实例内网地址:3389 ec2-user@Linux实例公网地址
+</pre></div>
+</div>
+<p>打开远程桌面客户端，连接 127.0.0.1:50001，输入用户名 Administrator，密码获取方式参考 <a class="reference external" href="https://docs.aws.amazon.com/AWSEC2/latest/WindowsGuide/EC2_GetStarted.html#ec2-connect-to-instance-windows">文档</a></p>
+</section>
+<section id="id6">
+<h3><a class="toc-backref" href="#id14">测试</a><a class="headerlink" href="#id6" title="永久链接至标题"></a></h3>
+<ul class="simple">
+<li><p>在 Windows 实例上开启一个 Web 服务，侦听 80 端口，比如 IIS，回到 EC2 控制台，找到 <strong>Load Balancers</strong>，选择模板创建的 Load Balancer，在 Description 中找到 DNS name，输入到浏览器地址栏</p></li>
+<li><p>在 Windows 实例上安装 MySQL Workbench，在 <a class="reference external" href="https://cn-northwest-1.console.amazonaws.cn/secretsmanager/home?region=cn-northwest-1#!/listSecrets">Secret Manager</a> 找到 RDS 连接信息，连接到 RDS</p></li>
+</ul>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; 版权所有 2021, Hao.</p>
+  </div>
+
+  利用 <a href="https://www.sphinx-doc.org/">Sphinx</a> 构建，使用了 
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">主题</a>
+    由 <a href="https://readthedocs.org">Read the Docs</a>开发.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

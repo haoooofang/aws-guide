@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="zh-CN" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>使用 AWS Glue 从 Kinesis 数据流中分离出不同的数据库表格 &mdash; AWS Guide 0.0.1 文档</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/translations.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="索引" href="../genindex.html" />
+    <link rel="search" title="搜索" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> AWS Guide
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="在文档中搜索" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">使用 AWS Glue 从 Kinesis 数据流中分离出不同的数据库表格</a><ul>
+<li><a class="reference internal" href="#aws-glue">AWS Glue 介绍</a></li>
+<li><a class="reference internal" href="#id2">操作介绍</a><ul>
+<li><a class="reference internal" href="#kinesis-data-streams-firehose">新建 Kinesis Data Streams 数据流和 Firehose 投递流</a></li>
+<li><a class="reference internal" href="#dms">配置 DMS 进行数据采集</a></li>
+<li><a class="reference internal" href="#glue-job">增加一个 Glue Job 来进行表格分离操作</a><ul>
+<li><a class="reference internal" href="#id3">初始化，导入必要的包</a></li>
+<li><a class="reference internal" href="#glue-dynamicframe">从 Glue 爬取程序建立的表对象创建一个 DynamicFrame</a></li>
+<li><a class="reference internal" href="#id4">根据表名进行过滤</a></li>
+<li><a class="reference internal" href="#id5">去掉字段前缀</a></li>
+<li><a class="reference internal" href="#s3">写入 S3</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#id6">总结</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">AWS Guide</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>使用 AWS Glue 从 Kinesis 数据流中分离出不同的数据库表格</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/analytics/kinesis2glue.rst.txt" rel="nofollow"> 查看页面源码</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="aws-glue-kinesis">
+<h1><a class="toc-backref" href="#id7">使用 AWS Glue 从 Kinesis 数据流中分离出不同的数据库表格</a><a class="headerlink" href="#aws-glue-kinesis" title="永久链接至标题"></a></h1>
+<p>以流为起点的架构设计。</p>
+<p>我们看到越来越多的用户，越来越关注数据的时效性，以流处理为起点开始设计他们的大数据平台，比如说数据采集时，不再是周期性的用SQL进行批量查询，而是实时采集系统日志或者数据库 WAL（Write-Ahead Logging）这些变更信息。</p>
+<p>像在游戏行业中，我们会实时采集游戏服务器的系统日志，来了解用户端与服务端的交互信息；同时，我们也会实时采集记录到数据库中的对战信息、消费信息。这些数据既可以帮忙运维人员实时监控游戏运行，也可以让运营人员对活动策划获得准确和及时的反馈。</p>
+<p>Amazon Kinesis Data Streams 就是一款非常适合的流式存储，它不但在 Amazon 内部得到广泛使用，也因为 Serverless 免运维、易扩展等特点深受 AWS 用户的喜爱。我们可以通过 API、KPL 或者 Kinesis Agent 把系统日志投递到 Amazon Kinesis Data Streams，也可以通过 AWS Database Migration Service(DMS) 采集各种关系型数据库的 WAL 日志。</p>
+<p>不过很多时候，我们会把一个 Database 的多张表通过同一个 DMS 任务处理，投递到了同一个 Kinesis 数据流中。DMS 贴心的为每一条记录，都附加了 Meta Data 来说明数据的来源。我们可以通过适合的工具，来分离出我们需要的表格中的记录。</p>
+<p>当然，对 Amazon Kinesis Data Streams 中的流式数据，既可以通过 Amazon Kinesis Analytics 或者 Apache Spark Structured Streaming、Apache Flink 此类的流式分析工具，也可以使用 AWS Glue 或者 Apache Spark SQL 进行批量处理。</p>
+<p>这里，我们就介绍，如何通过使用 AWS 强大的 ETL 工具 AWS Glue，通过一个简单操作，来分离出 Amazon Kinesis Data Streams 中不同的数据表格。</p>
+<div class="contents topic" id="id1">
+<p class="topic-title">目录</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#aws-glue-kinesis" id="id7">使用 AWS Glue 从 Kinesis 数据流中分离出不同的数据库表格</a></p>
+<ul>
+<li><p><a class="reference internal" href="#aws-glue" id="id8">AWS Glue 介绍</a></p></li>
+<li><p><a class="reference internal" href="#id2" id="id9">操作介绍</a></p>
+<ul>
+<li><p><a class="reference internal" href="#kinesis-data-streams-firehose" id="id10">新建 Kinesis Data Streams 数据流和 Firehose 投递流</a></p></li>
+<li><p><a class="reference internal" href="#dms" id="id11">配置 DMS 进行数据采集</a></p></li>
+<li><p><a class="reference internal" href="#glue-job" id="id12">增加一个 Glue Job 来进行表格分离操作</a></p>
+<ul>
+<li><p><a class="reference internal" href="#id3" id="id13">初始化，导入必要的包</a></p></li>
+<li><p><a class="reference internal" href="#glue-dynamicframe" id="id14">从 Glue 爬取程序建立的表对象创建一个 DynamicFrame</a></p></li>
+<li><p><a class="reference internal" href="#id4" id="id15">根据表名进行过滤</a></p></li>
+<li><p><a class="reference internal" href="#id5" id="id16">去掉字段前缀</a></p></li>
+<li><p><a class="reference internal" href="#s3" id="id17">写入 S3</a></p></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#id6" id="id18">总结</a></p></li>
+</ul>
+</li>
+</ul>
+</div>
+<section id="aws-glue">
+<h2><a class="toc-backref" href="#id8">AWS Glue 介绍</a><a class="headerlink" href="#aws-glue" title="永久链接至标题"></a></h2>
+<p><a class="reference external" href="https://aws.amazon.com/glue/">AWS Glue</a>  是一项完全托管且按需付费的提取、转换和加载 (ETL) 服务，可自动执行分析所需的耗时数据准备步骤。AWS Glue 通过 Glue 数据目录自动发现并绘制您的数据，推荐并生成 ETL 代码，以将源数据转换成目标架构，并在完全托管的横向扩展 Apache Spark 环境中运行 ETL 作业，将数据加载到其目标中。它还使您能够设置、编排和监控复杂的数据流。</p>
+<p>AWS Glue 由数据目录（一个中央元数据存储库）、ETL 引擎（可自动生成 Scala 或 Python 代码）和灵活的计划程序（可处理依赖关系解析、作业监控和重试）构成。这些组件结合在一起，自动执行与发现、分类、清理、丰富和移动数据相关的许多无差别的繁重任务，因此您可以将更多时间用在数据分析上。</p>
+</section>
+<section id="id2">
+<h2><a class="toc-backref" href="#id9">操作介绍</a><a class="headerlink" href="#id2" title="永久链接至标题"></a></h2>
+<p>数据的采集部分，我们使用了  AWS Database Migration Service 从源数据库（这里我们使用了一台 Amazon RDS MySQL）进行全量和增量的数据采集，然后发送到 Amazon Kinesis Data Streams。 Amazon Kinesis Firehose 消费 Amazon Kinesis Data Streams 数据流，为我们把数据投递到 S3.</p>
+<p>接下来，就由 AWS Glue 来接管数据处理过程。爬网程序（Crawler）能根据分析数据内容，为我们自动生成表结构，并将表信息集中存储在统一的元数据存储——数据目录（Catalog）中。元数据除了供 AWS Glue 自身的 ETL 程序使用外，也可以由其它分析工具调用，比如说，使用 Amazon EMR、Amazon Athena 或者 Amazon Redshift Spectrum。AWS Glue ETL 基于 Apache Spark，但作了很多功能增强，我们就借助于AWS Glue 对 PySpark 语法的扩展，来灵活处理此问题。具体来讲，就是使用 filter 这个 Transform 方法，基于 metadata 中的 schema name + table name 对记录进行过滤，把不同的表格内容分离出来。</p>
+<p>分离出来的结果数据，我们再次存放进 S3, 然后再使用 Amazon Athena 进行即席查询。</p>
+<p>整体架构如图所示：</p>
+<p><img alt="Image8:" src="../_images/image8.png" /></p>
+<p>接下来，我们将通过一个 Demo 来演示具体操作，假设您已经：</p>
+<ol class="arabic simple">
+<li><p>启用了 AWS 东京区域（ap-northeast-1，本次实验假定在东京区域）；</p></li>
+<li><p>安装并正确设置了 <a class="reference external" href="https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html">AWS CLI</a>；</p></li>
+<li><p>创建了一台 MySQL 5.7 版本的 Amazon RDS 服务器，创建 RDS 实例前先创建一个参数组，并按 <a class="reference external" href="https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Source.MySQL.html#CHAP_Source.MySQL.AmazonManaged">DMS 对 RDS for MySQL 源的要求</a> 修改参数组和实例其它设置。示例数据库可以使用 <a class="reference external" href="https://github.com/aws-samples/aws-database-migration-samples">DMS 示例数据库</a> ，在运行 <code class="docutils literal notranslate"><span class="pre">install-rds.sql</span></code> 建库之前，需要在 <strong>aws-database-migration-samples/mysql/sampledb/v1/</strong> 目录下运行以下命令进行一些修正：</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sed -i <span class="s1">&#39;1625d;s/Insert into/Insert ignore into/g&#39;</span> name_data.sql<span class="p">;</span>
+</pre></div>
+</div>
+<p>执行 <code class="docutils literal notranslate"><span class="pre">install-install-rds.sql</span></code> 完成导入后，需要在 MySQL 中给 dms_user 读取 Binlog 的权限：</p>
+<div class="highlight-sql notranslate"><div class="highlight"><pre><span></span><span class="k">GRANT</span> <span class="n">REPLICATION</span> <span class="n">CLIENT</span><span class="p">,</span> <span class="n">REPLICATION</span> <span class="n">SLAVE</span> <span class="k">ON</span> <span class="o">*</span><span class="p">.</span><span class="o">*</span> <span class="k">TO</span> <span class="n">dms_user</span><span class="p">;</span>
+</pre></div>
+</div>
+<section id="kinesis-data-streams-firehose">
+<h3><a class="toc-backref" href="#id10">新建 Kinesis Data Streams 数据流和 Firehose 投递流</a><a class="headerlink" href="#kinesis-data-streams-firehose" title="永久链接至标题"></a></h3>
+<p>Kinesis Data Streams 的创建非常简单，提供 stream 名称和 shard 数量即可，以下是 CLI 命令示例：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>aws kinesis create-stream <span class="se">\</span>
+  --stream-name <span class="s2">&quot;dms_sample&quot;</span> <span class="se">\</span>
+  --shard-count <span class="m">2</span> <span class="se">\</span>
+  --region ap-northeast-1
+</pre></div>
+</div>
+<p>Kinesis Firehose 可以把 Kinesis Data Streams 中的数据投递到指定存储，目前支持 Redshift、S3、ElasticSearch 和 Splunk,我们这里以 S3 为例。配置前需要定义好 <a class="reference external" href="https://docs.aws.amazon.com/firehose/latest/dev/controlling-access.html#using-iam-s3">IAM role</a> 并建好 S3 bucket，ARN 的格式可以参考 <a class="reference external" href="https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html">这个页面</a>。</p>
+<p>下面是创建 Firehose 投递流的 CLI 命令示例，请对配置中的 YOUR_ACOUNT_ID、ROLE_NAME 和 BUCKET_NAME 根据实际情况进行替换。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">{</span>
+<span class="s1">  &quot;RoleARN&quot;: &quot;arn:aws:iam::YOUR_ACOUNT_ID:role/ROLE_NAME&quot;,</span>
+<span class="s1">  &quot;BucketARN&quot;: &quot;arn:aws:s3:::BUCKET_NAME&quot;,</span>
+<span class="s1">  &quot;Prefix&quot;: &quot;source/dms_sample/!{timestamp:yyyy-MM-dd}&quot;,</span>
+<span class="s1">  &quot;ErrorOutputPrefix&quot;: &quot;source/errors/!{firehose:error-output-type}-!{timestamp:yyyy-MM-dd}&quot;,</span>
+<span class="s1">  &quot;BufferingHints&quot;: {</span>
+<span class="s1">    &quot;SizeInMBs&quot;: 128,</span>
+<span class="s1">    &quot;IntervalInSeconds&quot;: 600</span>
+<span class="s1">  },</span>
+<span class="s1">  &quot;CompressionFormat&quot;: &quot;GZIP&quot;,</span>
+<span class="s1">  &quot;CloudWatchLoggingOptions&quot;: {</span>
+<span class="s1">    &quot;Enabled&quot;: true,</span>
+<span class="s1">    &quot;LogGroupName&quot;: &quot;deliverystream&quot;,</span>
+<span class="s1">    &quot;LogStreamName&quot;: &quot;S3Delivery&quot;</span>
+<span class="s1">  }</span>
+<span class="s1">}</span>
+<span class="s1">&#39;&#39;&#39;</span> &gt; s3_settings.json
+
+<span class="nb">echo</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">{</span>
+<span class="s1">  &quot;KinesisStreamARN&quot;: &quot;arn:aws:kinesis:ap-northeast-1:YOUR_ACOUNT_ID:stream/dms_sample&quot;,</span>
+<span class="s1">  &quot;RoleARN&quot;: &quot;arn:aws:iam::YOUR_ACOUNT_ID:role/ROLE_NAME&quot;</span>
+<span class="s1">}</span>
+<span class="s1">&#39;&#39;&#39;</span>&gt; kinesis_settings.json
+
+aws firehose create-delivery-stream <span class="se">\</span>
+  --delivery-stream-name <span class="s2">&quot;dms_sample&quot;</span> <span class="se">\</span>
+  --delivery-stream-type <span class="s2">&quot;KinesisStreamAsSource&quot;</span> <span class="se">\</span>
+  --kinesis-stream-source-configuration <span class="s2">&quot;file://kinesis_settings.json&quot;</span> <span class="se">\</span>
+  --s3-destination-configuration <span class="s2">&quot;file://s3_settings.json&quot;</span> <span class="se">\</span>
+  --region ap-northeast-1
+</pre></div>
+</div>
+</section>
+<section id="dms">
+<h3><a class="toc-backref" href="#id11">配置 DMS 进行数据采集</a><a class="headerlink" href="#dms" title="永久链接至标题"></a></h3>
+<p>AWS Database Migration Service(DMS) 操作过程可以分为以下步骤：</p>
+<ol class="arabic simple">
+<li><p>准备 DMS 环境，包括创建 VPC、VPC 子网、IAM 角色和 EC2 安全组，创建 DMS 子网组；</p></li>
+<li><p>创建 DMS 复制实例，因为 DMS 需要缓存从任务开始时起的数据库变更，所以预留好内存和硬盘应对需要。生产环境下，建议启用 Multi-AZ 保证 DMS 的高可用；</p></li>
+<li><p>建立指向源数据库和 Kinesis 的终端节点，确保复制实例可以成功连接终端节点；</p></li>
+<li><p>创建并启动迁移任务，数据库记录就会源源不断的进入 Amazon Kinesis Data Streams。</p></li>
+</ol>
+<p>我们可以参考 <a class="reference external" href="https://docs.aws.amazon.com/dms/latest/userguide/CHAP_GettingStarted.html">DMS产品文档</a> 配置好 DMS 复制实例和 MySQL 终端节点，Kinesis 目标终端节点的配置可以参考 <a class="reference external" href="https://docs.aws.amazon.com/dms/latest/userguide/CHAP_Target.Kinesis.html">这个页面</a>。复制实例引擎版本务必确定在 3.1.4 及以上。配置完后，验证复制实例到终端节点的连接。</p>
+<p>要注意的是，DMS 默认使用单线程向 Kinesis 进行投递，因此我们需要对任务进行配置，增加并发度。下面的设置中，MaxFullLoadSubTasks 设置并发处理 8 张表，ParallelLoadThreads 为 16 表示每张表并发 16 线程进行处理。</p>
+<p>下面是创建 DMS 任务的 CLI 命令示例，ARN 在各个组件的详情页，根据实际情况进行替换。</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">{</span>
+<span class="s1">  &quot;TargetMetadata&quot;: {</span>
+<span class="s1">    &quot;ParallelLoadThreads&quot;: 16,</span>
+<span class="s1">    &quot;ParallelLoadBufferSize&quot;:500</span>
+<span class="s1">  },</span>
+<span class="s1">  &quot;FullLoadSettings&quot;: {</span>
+<span class="s1">    &quot;MaxFullLoadSubTasks&quot;: 8,</span>
+<span class="s1">    &quot;TransactionConsistencyTimeout&quot;: 600,</span>
+<span class="s1">    &quot;CommitRate&quot;: 10000</span>
+<span class="s1">  },</span>
+<span class="s1">  &quot;Logging&quot;: {</span>
+<span class="s1">    &quot;EnableLogging&quot;: true</span>
+<span class="s1">  }</span>
+<span class="s1">}</span>
+<span class="s1">&#39;&#39;&#39;</span> &gt; task_settings.json
+
+<span class="nb">echo</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">{</span>
+<span class="s1">    &quot;rules&quot;: [</span>
+<span class="s1">        {</span>
+<span class="s1">            &quot;rule-type&quot;: &quot;selection&quot;,</span>
+<span class="s1">            &quot;rule-id&quot;: &quot;1&quot;,</span>
+<span class="s1">            &quot;rule-name&quot;: &quot;dms_sample-all&quot;,</span>
+<span class="s1">            &quot;object-locator&quot;: {</span>
+<span class="s1">                &quot;schema-name&quot;: &quot;dms_sample&quot;,</span>
+<span class="s1">                &quot;table-name&quot;: &quot;%&quot;</span>
+<span class="s1">            },</span>
+<span class="s1">            &quot;rule-action&quot;: &quot;include&quot;</span>
+<span class="s1">        }</span>
+<span class="s1">    ]</span>
+<span class="s1">}</span>
+<span class="s1">&#39;&#39;&#39;</span> &gt; table_mapping.json
+
+aws dms create-replication-task <span class="se">\</span>
+  --replication-task-identifier <span class="s2">&quot;dmssample-streams&quot;</span> <span class="se">\</span>
+  --source-endpoint-arn arn:aws:dms:ap-northeast-1:your_account_id:endpoint:SOURCE_ARN <span class="se">\</span>
+  --target-endpoint-arn arn:aws:dms:ap-northeast-1:your_account_id:endpoint:TARGET_ARN <span class="se">\</span>
+  --replication-instance-arn arn:aws:dms:ap-northeast-1:your_account_id:rep:INSTANCE_ARN <span class="se">\</span>
+  --migration-type <span class="s2">&quot;full-load-and-cdc&quot;</span> <span class="se">\</span>
+  --table-mappings <span class="s1">&#39;file://table_mapping.json&#39;</span> <span class="se">\</span>
+  --replication-task-settings <span class="s1">&#39;file://task_settings.json&#39;</span> <span class="se">\</span>
+  --region ap-northeast-1
+</pre></div>
+</div>
+<p>当看到任务状态转为 ready 后，启动任务：</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>aws dms start-replication-task <span class="se">\</span>
+  --replication-task-arn arn:aws:dms:ap-northeast-1:your_account_id:task:TASK_ARN <span class="se">\</span>
+  --start-replication-task-type start-replication <span class="se">\</span>
+  --region ap-northeast-1
+</pre></div>
+</div>
+<p>在任务详情页，可以查看 DMS 识别并处理的表：</p>
+<p><img alt="Image3:" src="../_images/image3.png" /></p>
+</section>
+<section id="glue-job">
+<h3><a class="toc-backref" href="#id12">增加一个 Glue Job 来进行表格分离操作</a><a class="headerlink" href="#glue-job" title="永久链接至标题"></a></h3>
+<p>AWS Glue 提供了一个爬网程序 （Crawler），可以为我们自动发现和更新数据目录中的元数据， 这大大减轻了我们的工作负担。除了支持 Parquet、ORC、JSON、CSV 等开源数据格式，爬网程序也可通过 JDBC 爬取各种常用关系型数据库。如果爬取程序对数据的解析不能满足您需求，比如说需要对 JSON 进行复杂的路径解析，您也可以编写自定义分类器。</p>
+<p>我们先创建一个 Glue Crawler，数据位置为 Firehose 投递的 S3 Bucket，因为只需要了解数据的格式，所以对更新和删除造成的结构变更，我们保持默认操作（具体过程参考 <a class="reference external" href="https://docs.aws.amazon.com/glue/latest/dg/console-crawlers.html">产品文档</a>。完成爬取程序设定后，我们手动点击运行，稍等片刻，即可在数据库中看到扫描到新的表格，可以看到仅有 metadata 和 data 两个字段。</p>
+<p><img alt="Image1:" src="../_images/image1.png" /></p>
+<p>每条记录长这个样子：</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="nt">&quot;data&quot;</span><span class="p">:</span>     <span class="p">{</span>
+    <span class="nt">&quot;id&quot;</span><span class="p">:</span>     <span class="mi">2633753</span><span class="p">,</span>
+    <span class="nt">&quot;sporting_event_id&quot;</span><span class="p">:</span>      <span class="mi">52</span><span class="p">,</span>
+    <span class="nt">&quot;sport_location_id&quot;</span><span class="p">:</span>      <span class="mi">26</span><span class="p">,</span>
+    <span class="nt">&quot;seat_level&quot;</span><span class="p">:</span>     <span class="mi">2</span><span class="p">,</span>
+    <span class="nt">&quot;seat_section&quot;</span><span class="p">:</span>   <span class="s2">&quot;30&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;seat_row&quot;</span><span class="p">:</span>       <span class="s2">&quot;J&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;seat&quot;</span><span class="p">:</span>   <span class="s2">&quot;19&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;ticket_price&quot;</span><span class="p">:</span>   <span class="mf">46.570000</span>
+  <span class="p">},</span>
+  <span class="nt">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+    <span class="nt">&quot;timestamp&quot;</span><span class="p">:</span>      <span class="s2">&quot;2019-11-13T09:59:08.059607Z&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;record-type&quot;</span><span class="p">:</span>    <span class="s2">&quot;data&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;operation&quot;</span><span class="p">:</span>      <span class="s2">&quot;load&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;partition-key-type&quot;</span><span class="p">:</span>     <span class="s2">&quot;primary-key&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;schema-name&quot;</span><span class="p">:</span>    <span class="s2">&quot;dms_sample&quot;</span><span class="p">,</span>
+    <span class="nt">&quot;table-name&quot;</span><span class="p">:</span>     <span class="s2">&quot;sporting_event_ticket&quot;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>多个表的内容，揉杂在了一起，我们需要通过一个 Glue ETL 任务来进行分离。Glue 的 Spark 环境支持 Scala 和 Python，下面我们基于 Python 3 来编写代码。为了方便调试，我们可以创建一个 <a class="reference external" href="https://docs.aws.amazon.com/glue/latest/dg/dev-endpoint.html">开发终端节点和一个 Zeppelin Notebook Server</a>，开发终端节点的权限设置可参考 <a class="reference external" href="https://docs.aws.amazon.com/glue/latest/dg/create-an-iam-role.html">文档</a>。 当然也可以直接 SSH 到 Development Endpoint 的 <a class="reference external" href="https://docs.aws.amazon.com/glue/latest/dg/dev-endpoint-tutorial-repl.html">REPL 调试界面</a>。</p>
+<section id="id3">
+<h4><a class="toc-backref" href="#id13">初始化，导入必要的包</a><a class="headerlink" href="#id3" title="永久链接至标题"></a></h4>
+<p>以下以 SSH 登录到开发终端节点，在 Python REPL 环境中执行为例：</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pyspark.context</span> <span class="kn">import</span> <span class="n">SparkContext</span>
+<span class="kn">from</span> <span class="nn">pyspark.sql.functions</span> <span class="kn">import</span> <span class="n">col</span>
+<span class="kn">from</span> <span class="nn">awsglue.context</span> <span class="kn">import</span> <span class="n">GlueContext</span>
+<span class="kn">from</span> <span class="nn">awsglue.transforms</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">awsglue.utils</span> <span class="kn">import</span> <span class="n">getResolvedOptions</span>
+<span class="kn">from</span> <span class="nn">awsglue</span> <span class="kn">import</span> <span class="n">DynamicFrame</span>
+
+<span class="c1"># Create a Glue context</span>
+<span class="n">glueContext</span> <span class="o">=</span> <span class="n">GlueContext</span><span class="p">(</span><span class="n">SparkContext</span><span class="o">.</span><span class="n">getOrCreate</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+<section id="glue-dynamicframe">
+<h4><a class="toc-backref" href="#id14">从 Glue 爬取程序建立的表对象创建一个 DynamicFrame</a><a class="headerlink" href="#glue-dynamicframe" title="永久链接至标题"></a></h4>
+<p>database 和 table_name 根据 Glue 数据目录中的内容进行修改。</p>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Create a DynamicFrame from AWS Glue Catalog</span>
+<span class="n">combined_DyF</span> <span class="o">=</span> <span class="n">glueContext</span><span class="o">.</span><span class="n">create_dynamic_frame</span><span class="o">.</span><span class="n">from_catalog</span><span class="p">(</span><span class="n">database</span><span class="o">=</span><span class="s2">&quot;dms_sample&quot;</span><span class="p">,</span> <span class="n">table_name</span><span class="o">=</span><span class="s2">&quot;source_dms_sample&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>可以看到现在的数据结构：</p>
+<p><img alt="Image2:" src="../_images/image2.png" /></p>
+</section>
+<section id="id4">
+<h4><a class="toc-backref" href="#id15">根据表名进行过滤</a><a class="headerlink" href="#id4" title="永久链接至标题"></a></h4>
+<p>我们根据 metadata 中的 schema-name 和 table-name 来过筛选出我们需要的表格 dms_sample.person，因为 Create Table 和 Drop Table 之类的 DDL 语句会生成 data 为空的记录，我们也过滤掉这些记录。</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Acquire rows from &quot;person&quot; table</span>
+<span class="n">person_DyF</span> <span class="o">=</span> <span class="n">combined_DyF</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">f</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> \
+    <span class="n">x</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;schema-name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;dms_sample&quot;</span> <span class="ow">and</span> \
+    <span class="n">x</span><span class="p">[</span><span class="s2">&quot;metadata&quot;</span><span class="p">][</span><span class="s2">&quot;table-name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;person&quot;</span> <span class="ow">and</span> \
+    <span class="n">x</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>经过过滤之后的数据结构如下：</p>
+<p><img alt="Image4:" src="../_images/image4.png" /></p>
+</section>
+<section id="id5">
+<h4><a class="toc-backref" href="#id16">去掉字段前缀</a><a class="headerlink" href="#id5" title="永久链接至标题"></a></h4>
+<p>转换成 PySpark 的 DataFrame， 通过 select 来去掉字段前缀，并且仅保留 data 字段和 metadata 里面的 timestamp 。</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Select columns from DataFrame</span>
+<span class="n">person_DF</span> <span class="o">=</span> <span class="n">person_DyF</span><span class="o">.</span><span class="n">toDF</span><span class="p">()</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;data.*&quot;</span><span class="p">),</span> <span class="n">col</span><span class="p">(</span><span class="s2">&quot;metadata.timestamp&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>可以看到现在的表结构已经和我们源表结构相似了（除了我们故意增加的 timestamp 字段）。</p>
+<ul class="simple">
+<li><p>Glue 中的表：</p></li>
+</ul>
+<p><img alt="Image5:" src="../_images/image5.png" /></p>
+<ul class="simple">
+<li><p>MySQL 中的源表：</p></li>
+</ul>
+<p><img alt="Image6:" src="../_images/image6.png" /></p>
+</section>
+<section id="s3">
+<h4><a class="toc-backref" href="#id17">写入 S3</a><a class="headerlink" href="#s3" title="永久链接至标题"></a></h4>
+<p>我们把 DataFrame 转换回 DynamicFrame，然后使用 Parquet 格式写回 S3。为了减少文件的数量，我们通过 repartition 进行了合并。另外，我们使用 gender 作为 partitionKey 展示了目标表分区的功能。当然，在实际使用中，要根据数据量来选择 repartition 的分区数量，防止 OuteOfMemery 错误出现；目标表是否分区、分区键的选择也要根据数据分布和查询模式来确定。</p>
+<p>S3 路径根据实际情况进行修改。</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Write to S3</span>
+<span class="n">tmp_dyf</span> <span class="o">=</span> <span class="n">DynamicFrame</span><span class="o">.</span><span class="n">fromDF</span><span class="p">(</span><span class="n">person_DF</span><span class="o">.</span><span class="n">repartition</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">glueContext</span><span class="p">,</span> <span class="s2">&quot;temp&quot;</span><span class="p">)</span>
+<span class="n">glueContext</span><span class="o">.</span><span class="n">write_dynamic_frame</span><span class="o">.</span><span class="n">from_options</span><span class="p">(</span>\
+    <span class="n">tmp_dyf</span><span class="p">,</span> \
+    <span class="s2">&quot;s3&quot;</span><span class="p">,</span>\
+    <span class="p">{</span><span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="s2">&quot;s3://bucket/target/dms_sample/person/&quot;</span><span class="p">,</span> <span class="s2">&quot;partitionKeys&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;first_name&quot;</span><span class="p">]},</span>\
+    <span class="s2">&quot;parquet&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>现在，我们的数据已经完成了处理，并存放在了期望的位置，接下来就可以进行查询了。Amazon Redshift、Amazon EMR 和 Amazon Athena 都可以基于 AWS Glue 数据目录（Catalog）中的元数据进行查询，这就是托管的、集中的元数据管理带来的便捷性。</p>
+<p>我们以 Amazon Athena 为例进行即席查询，首先，我们通过另外一个 Glue Crawler 爬网程序来爬取目标表的结构，在爬网程序中定义数据存储位置为上面 AWS Glue ETL 的输出位置 <strong>s3://bucket/target/dms_sample/person/</strong>，手动执行这个爬网程序，看到数据库中出现了一张新的表。切换到 Amzon Athena，我们看到元数据已经同步更新，然后，就可以对目标表进行查询了：</p>
+<p><img alt="Image7:" src="../_images/image7.png" /></p>
+</section>
+</section>
+</section>
+<section id="id6">
+<h2><a class="toc-backref" href="#id18">总结</a><a class="headerlink" href="#id6" title="永久链接至标题"></a></h2>
+<p>在这个 Demo 中，我们把源表中整个 schema 采集到了一个 Kinesis 数据流里面，再利用 AWS Glue 的 filter 筛选出我们需要的表，并充分利用 AWS Glue DynamicFrame schema on-the-fly 的特性，根据当前数据内容，动态生成表结构。</p>
+<p>我们看到，AWS Glue 提供了托管的 Spark 集群，还提供了结构爬取、集中元数据存储功能，并且通过 DynamicFrame 对 PySpark 进行了扩展，可以作为我们一站式 ETL 解决方案。</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; 版权所有 2021, Hao.</p>
+  </div>
+
+  利用 <a href="https://www.sphinx-doc.org/">Sphinx</a> 构建，使用了 
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">主题</a>
+    由 <a href="https://readthedocs.org">Read the Docs</a>开发.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

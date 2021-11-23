@@ -7,14 +7,8 @@ Welcome to AWS Guide's documentation!
 =====================================
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: CloudFormation 模板
 
+   创建一个基础三层架构 <CloudFormation/basic-web>   
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
