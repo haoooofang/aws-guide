@@ -18,7 +18,8 @@
         <script src="../_static/translations.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="索引" href="../genindex.html" />
-    <link rel="search" title="搜索" href="../search.html" /> 
+    <link rel="search" title="搜索" href="../search.html" />
+    <link rel="prev" title="Welcome to AWS Guide’s documentation!" href="../index.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -36,22 +37,22 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <!-- Local TOC -->
-              <div class="local-toc"><ul>
-<li><a class="reference internal" href="#">创建一个基础三层架构</a><ul>
-<li><a class="reference internal" href="#key-pair">生成 Key Pair</a></li>
-<li><a class="reference internal" href="#id3">部署模板</a><ul>
-<li><a class="reference internal" href="#id4">选择模板文件</a></li>
-<li><a class="reference internal" href="#stack">指定 Stack 名称</a></li>
-<li><a class="reference internal" href="#id5">创建 Stack</a></li>
-<li><a class="reference internal" href="#windows">连接到 Windows 实例</a></li>
-<li><a class="reference internal" href="#id6">测试</a></li>
+              <p class="caption" role="heading"><span class="caption-text">CloudFormation 模板</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">创建一个基础三层架构</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#key-pair">生成 Key Pair</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">部署模板</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id4">选择模板文件</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#stack">指定 Stack 名称</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">创建 Stack</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#windows">连接到 Windows 实例</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">测试</a></li>
 </ul>
 </li>
 </ul>
 </li>
 </ul>
-</div>
+
         </div>
       </div>
     </nav>
@@ -119,13 +120,15 @@
 <section id="id5">
 <h3><a class="toc-backref" href="#id12">创建 Stack</a><a class="headerlink" href="#id5" title="永久链接至标题"></a></h3>
 <p>在 <strong>Review</strong> 页面，勾选 <code class="docutils literal notranslate"><span class="pre">I</span> <span class="pre">acknowledge</span> <span class="pre">that</span> <span class="pre">Amazon</span> <span class="pre">CloudFormation</span> <span class="pre">might</span> <span class="pre">create</span> <span class="pre">IAM</span> <span class="pre">resources.</span></code> 点击 <strong>Create Stack</strong></p>
-<p>模板会创造以下资源
-- 一个带有3个公有子网、3个私有子网和3个隔离子网的 VPC，CIDR 为 172.31.0.0/16
-- 在3个公有子网分别创建一个 NAT Gateway
-- 一台安装 Windows 2019 的 EC2 实例
-- 一台安装 Amazon Linux 2 的 Linux 实例作为跳板机
-- 一个应用负载均衡器，侦听 80 端口，转发请求到 Windows 实例
-- 一个 Aurora 集群，包括一个主实例和一个只读实例</p>
+<p>模板会创造以下资源</p>
+<ul class="simple">
+<li><p>一个带有3个公有子网、3个私有子网和3个隔离子网的 VPC，CIDR 为 172.31.0.0/16</p></li>
+<li><p>在3个公有子网分别创建一个 NAT Gateway</p></li>
+<li><p>一台安装 Windows 2019 的 EC2 实例</p></li>
+<li><p>一台安装 Amazon Linux 2 的 Linux 实例作为跳板机</p></li>
+<li><p>一个应用负载均衡器，侦听 80 端口，转发请求到 Windows 实例</p></li>
+<li><p>一个 Aurora 集群，包括一个主实例和一个只读实例</p></li>
+</ul>
 </section>
 <section id="windows">
 <h3><a class="toc-backref" href="#id13">连接到 Windows 实例</a><a class="headerlink" href="#windows" title="永久链接至标题"></a></h3>
@@ -154,7 +157,9 @@
 
            </div>
           </div>
-          <footer>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../index.html" class="btn btn-neutral float-left" title="Welcome to AWS Guide’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> 上一页</a>
+    </div>
 
   <hr/>
 

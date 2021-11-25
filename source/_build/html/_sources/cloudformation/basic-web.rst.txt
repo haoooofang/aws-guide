@@ -38,6 +38,7 @@
 在 **Review** 页面，勾选 ``I acknowledge that Amazon CloudFormation might create IAM resources.`` 点击 **Create Stack**
 
 模板会创造以下资源
+
 - 一个带有3个公有子网、3个私有子网和3个隔离子网的 VPC，CIDR 为 172.31.0.0/16
 - 在3个公有子网分别创建一个 NAT Gateway
 - 一台安装 Windows 2019 的 EC2 实例

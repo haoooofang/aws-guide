@@ -12,5 +12,9 @@ Welcome to AWS Guide's documentation!
 
    创建一个基础三层架构 <cloudformation/basic-web>   
 
+.. toctree::
+   :maxdepth: 1
+   :caption: VPC 有关
 
+   通过 OpenVPN 安全访问 RDS <vpc/openvpn>
 
