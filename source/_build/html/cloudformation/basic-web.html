@@ -19,6 +19,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="索引" href="../genindex.html" />
     <link rel="search" title="搜索" href="../search.html" />
+    <link rel="next" title="通过 OpenVPN 连接到 RDS" href="../vpc/openvpn.html" />
     <link rel="prev" title="Welcome to AWS Guide’s documentation!" href="../index.html" /> 
 </head>
 
@@ -51,6 +52,10 @@
 </li>
 </ul>
 </li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">网络</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../vpc/openvpn.html">通过 OpenVPN 安全访问 RDS</a></li>
 </ul>
 
         </div>
@@ -137,7 +142,6 @@
 <li><p>Source port: 50001</p></li>
 <li><p>Destination: Windows实例内网地址:3389</p></li>
 </ul>
-<p>启动这个 Session。</p>
 <p>Linux 和 Mac 下可以执行</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ssh -N -L <span class="m">50001</span>:Windows实例内网地址:3389 ec2-user@Linux实例公网地址
 </pre></div>
@@ -159,6 +163,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../index.html" class="btn btn-neutral float-left" title="Welcome to AWS Guide’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> 上一页</a>
+        <a href="../vpc/openvpn.html" class="btn btn-neutral float-right" title="通过 OpenVPN 连接到 RDS" accesskey="n" rel="next">下一页 <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

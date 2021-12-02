@@ -54,7 +54,6 @@ Windows 下以 PuTTY 为例，添加一个到 Linux 实例的 Session，包括�
 - Source port: 50001
 - Destination: Windows实例内网地址:3389
 
-启动这个 Session。
 
 Linux 和 Mac 下可以执行 
 
